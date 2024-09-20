@@ -1,0 +1,120 @@
+<html>
+  <head>
+
+    <script type="text/javascript" src="https://get.goXTK.com/xtk_edge.js"></script>
+    <script type="text/javascript" src="loader.js"></script>
+
+    <title>CS460.org Assignment 2</title>
+    <style>
+      body {
+        background-color:#000;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden !important; 
+      }
+    </style>
+
+<script>
+
+CUBE_SIDELENGTH = 10;
+GAP = 2;
+
+window.onload = function() 
+{
+  r = new X.renderer3D();
+  r.init();
+  c0 = new X.cube();
+  c0.lengthX = c0.lengthY = c0.lengthZ = CUBE_SIDELENGTH;
+  r.add(c0);
+  r.render();
+};
+
+window.onkeypress = function(f) 
+{
+  if (f.code == 'KeyD') 
+  {
+    c0.transform.translateX(-CUBE_SIDELENGTH - GAP);
+  }
+  else if (f.code == 'KeyA') 
+  {
+    c0.transform.translateX(CUBE_SIDELENGTH + GAP);
+  }
+  else if (f.code == 'KeyW') 
+  {
+    c0.transform.translateZ(CUBE_SIDELENGTH + GAP);
+  }
+  else if (f.code == 'KeyS') 
+  {
+    c0.transform.translateZ(-CUBE_SIDELENGTH - GAP);
+  }
+  else if (f.code == 'KeyQ') 
+  {
+    c0.transform.translateY(-CUBE_SIDELENGTH - GAP);
+  }
+  else if (f.code == 'KeyE') 
+  {
+    c0.transform.translateY(CUBE_SIDELENGTH + GAP);
+  }
+  else if (f.code == 'Digit0') 
+  {
+    c0.color = [0, 0, 0];
+  }
+  else if (f.code == 'Digit1') 
+  {
+    c0.color = [1, 1, 1];
+  }
+  else if (f.code == 'Digit2') 
+  {
+    c0.color = [1, 0, 0];
+  }
+  else if (f.code == 'Digit3') 
+  {
+    c0.color = [0, 1, 0];
+  }
+  else if (f.code == 'Digit4') 
+  {
+    c0.color = [0, 0, 1];
+  }
+  else if (f.code == 'Digit5') 
+  {
+    c0.color = [1, 1, 0];
+  }
+  else if (f.code == 'Digit6') 
+  {
+    c0.color = [1, 0, 1];
+  }
+  else if (f.code == 'Digit7') 
+  {
+    c0.color = [0, 1, 1];
+  }
+  else if (f.code == 'Space') 
+  {
+    new_cube = new X.cube();
+    new_cube.color = c0.color;
+    new_cube.transform.matrix = new Float32Array(c0.transform.matrix);
+    new_cube.lengthX = new_cube.lengthY = new_cube.lengthZ = CUBE_SIDELENGTH;
+    r.add(new_cube);
+  }
+  if (f.code == 'KeyO') 
+  {
+    download();
+  }
+  else if (f.code == 'KeyL') 
+  {
+    upload("scene.json");
+  }
+  else if (f.code == 'KeyB') 
+  {
+    
+  }
+}
+
+
+</script>
+
+
+  </head>
+  <body>
+  </body>
+</html>
