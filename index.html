@@ -9,8 +9,10 @@
         overflow: hidden !important;  
       }
     </style>
-    
+
     <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <input id="selectedModel" type="file">
 
     <script type="importmap">
     {
@@ -20,21 +22,56 @@
       }
     }
     </script>
-
+    
     <script type="module">
 
       import * as THREE from 'three';
       import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'       
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import {Pane} from 'https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js';       
+      import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
-      var renderer, controls, scene, camera, loader, geometry, material;
-      var T = Math.PI/2;
-      var displacement = 5;
+      var renderer, controls, scene, camera, loader, geometry, material, poly, pane, lastobject, url;
+      var T = 3*Math.PI/2;
+      var T2 = Math.PI/36;
+      var delta = 1;
 
-      window.onload = function() {
-
+      window.onload = function() 
+      {
         // Three.js code goes here
         scene = new THREE.Scene();
+
+        var btn = document.createElement('button');
+        document.body.appendChild(btn);
+        btn.textContent = 'Export';
+        btn.onclick = download;
+
+        function download() {
+          const exporter = new GLTFExporter();
+          exporter.parse(
+            scene,
+            function (result) {
+              saveArrayBuffer(result, 'scene.glb');
+            },
+            { binary: true }
+          );
+        }
+
+        function saveArrayBuffer(buffer, filename) {
+          save(new Blob([buffer], { type: 'application/octet-stream' }), filename);
+        }
+
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        document.body.appendChild(link); // Firefox workaround, see #6594
+
+        function save(blob, filename) {
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          link.click();
+
+        // URL.revokeObjectURL( url ); breaks Firefox...
+        } 
 
         // setup the camera
         var fov = 75;
@@ -42,17 +79,44 @@
         var zNear = 1;
         var zFar = 10000;
         camera = new THREE.PerspectiveCamera( fov, ratio, zNear, zFar );
-        camera.position.set(0, 0, 100);
+        camera.position.set(0, 100, 100);
 
         // create renderer and setup the canvas
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize( window.innerWidth, window.innerHeight );
         document.body.appendChild( renderer.domElement );
 
+         // setup lights
+         var ambientLight = new THREE.AmbientLight();
+        scene.add( ambientLight );
 
+        var light = new THREE.DirectionalLight( 0xffffff, 5.0 );
+        light.position.set( 10, 100, 10 );
+        scene.add( light );
 
-        renderer.domElement.onclick = function( e ){
-          
+        //
+        // The plane
+        //
+        geometry = new THREE.PlaneGeometry( 100, 100 );
+        material = new THREE.MeshBasicMaterial();
+        var plane = new THREE.Mesh( geometry, material );
+        plane.quaternion.w = Math.cos(T/2);
+        plane.quaternion.x = Math.sin(T/2)*1;
+        plane.quaternion.y = Math.sin(T/2)*0;
+        plane.quaternion.z = Math.sin(T/2)*0;
+        scene.add( plane );
+        //
+        //
+        //
+
+        // setup loader
+        loader = new GLTFLoader();
+
+        // place gltf file onclick
+        renderer.domElement.onclick = function( e )
+        {
+          if (e.shiftKey)
+          {
             console.log('Yay! We clicked!');
 
             var pixel_coords = new THREE.Vector2( e.clientX, e.clientY );
@@ -70,105 +134,99 @@
 
             var raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(vp_coords_near, camera);
-            var intersects = raycaster.intersectObject(invisible_plane);
+            var intersects = raycaster.intersectObjects(scene.children);
+            
+            //load gltf file at click position
+            const uploadedFile = document.getElementById("selectedModel").files[0];
+            url = URL.createObjectURL(uploadedFile);
+            loader.load( url, function ( gltf ) 
+            {
+              var poly = gltf.scenes[0].children[0];
+              poly.quaternion.w = Math.cos(T/2);
+              poly.quaternion.x = Math.sin(T/2)*0;
+              poly.quaternion.y = Math.sin(T/2)*0;
+              poly.quaternion.z = Math.sin(T/2)*0;
+              scene.add( gltf.scene );
+              poly.position.set(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z);
+              lastobject = poly;
+            });
+              // scene.add( poly );
+              // poly.position.set(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z);
+              // lastobject = poly;
 
-            console.log('Ray to Invisible Plane', intersects[0].point);
+            console.log('Ray to object', intersects[0].point);
+          }
+        };
 
-            // update cube position
-            //cube.position.set(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z);
-
-          };
-
-        // setup lights
-        var ambientLight = new THREE.AmbientLight();
-        scene.add( ambientLight );
-
-        var light = new THREE.DirectionalLight( 0xffffff, 5.0 );
-        light.position.set( 10, 100, 10 );
-        scene.add( light );
-
-        
-        // load gltf file
-        loader = new GLTFLoader();
-        loader.load( 'hobbes.glb', function ( gltf ) 
+        window.onkeypress = function (f)
         {
-          var poly = gltf.scenes[0].children[0];
-          poly.quaternion.w = Math.cos(T/2);
-          poly.quaternion.x = Math.sin(T/2)*1;
-          poly.quaternion.y = Math.sin(T/2)*0;
-          poly.quaternion.z = Math.sin(T/2)*0;
-          scene.add( gltf.scene );
-          window.onkeypress = function(f)
+          console.log(f);
+          if (f.code == 'KeyX')
         {
-        if (f.code == 'KeyD') 
-        {
-          poly.translateX(-displacement);
+          console.log("x was pressed");
+          scene.remove(lastobject);
         }
-        else if (f.code == 'KeyA') 
+          if (f.code == 'KeyA')
         {
-          poly.translateX(displacement);
+          console.log("d was pressed")
+          lastobject.rotateY(5);
         }
-        else if (f.code == 'KeyW') 
+        if (f.code == 'KeyD')
         {
-          poly.translateZ(displacement);
+          lastobject.rotateY(-5);
         }
-        else if (f.code == 'KeyS') 
+        else if (f.code == 'KeyS')
         {
-          poly.translateZ(-displacement);
+          lastobject.rotateX(5);
         }
+        else if (f.code == 'KeyW')
+        {
+          lastobject.rotateX(-5);
         }
-        } );
-        window.onkeypress = function(f)
+        else if (f.code == 'KeyQ')
         {
-        if (f.code == 'Space') 
-        {
-          loader.load( 'hobbes.glb', function ( gltf ) 
-        {
-          var poly = gltf.scenes[0].children[0];
-          poly.quaternion.w = Math.cos(T/2);
-          poly.quaternion.x = Math.sin(T/2)*1;
-          poly.quaternion.y = Math.sin(T/2)*0;
-          poly.quaternion.z = Math.sin(T/2)*0;
-          scene.add( gltf.scene );
-        });
-          //new_cube.color = c0.color;
-          //new_cube.transform.matrix = new Float32Array(c0.transform.matrix);
-          //new_cube.lengthX = new_cube.lengthY = new_cube.lengthZ = CUBE_SIDELENGTH;
-          scene.add(gltf.scene);
+          lastobject.scale.set(lastobject.scale.x - delta,
+                         lastobject.scale.y - delta,
+                          lastobject.scale.z - delta);
         }
-      };
+        else if (f.code == 'KeyE')
+        {
+          lastobject.scale.set(lastobject.scale.x + delta,
+                         lastobject.scale.y + delta,
+                          lastobject.scale.z + delta);
+        }
+        // if (f.code == 'KeyO')
+        // {
+        //   // Instantiate an exporter
+        //   const exporter = new GLTFExporter();
 
-        //
-        // The plane
-        //
-        geometry = new THREE.PlaneGeometry( 100, 100 );
-        material = new THREE.MeshBasicMaterial( {
-          visible: true
-        });
+        //   // Parse the input and generate the glTF output
+        //   exporter.parse(
+        //     scene,
+        //     // called when the gltf has been generated
+        //     function ( gltf ) {
 
-        var plane = new THREE.Mesh( geometry, material );
-        
-        plane.quaternion.w = Math.cos(T/2);
-        plane.quaternion.x = Math.sin(T/2)*0;
-        plane.quaternion.y = Math.sin(T/2)*0;
-        plane.quaternion.z = Math.sin(T/2)*1;
-        
-        scene.add( plane );
-        //
-        //
-        //
+        //       console.log( gltf );
+        //       downloadJSON( gltf );
+
+        //     }
+        //   );
+        // }
+        };
+
+        // add Tweakpane
+        // pane = new Pane();
+        // var sceneui = pane.addFolder({title: 'Scene'});
 
         // interaction
         controls = new OrbitControls( camera, renderer.domElement );
 
         // call animation/rendering loop
         animate();
-        
       };
 
-
-
-      function animate() {
+      function animate() 
+      {
 
         requestAnimationFrame( animate );
 
